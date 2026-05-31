@@ -1,48 +1,42 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
-from pyzbar.pyzbar import decode
+import qrcode
 import cv2
 import numpy as np
+from pyzbar.pyzbar import decode
 
-# 1. إعداد البيانات (لو مش موجودة بننشئها)
+# إعداد السيستم
 if 'players' not in st.session_state:
-    st.session_state.players = pd.DataFrame(columns=["الاسم", "الكود", "انتهاء الاشتراك"])
-if 'attendance' not in st.session_state:
-    st.session_state.attendance = []
+    st.session_state.players = pd.DataFrame(columns=["الاسم", "الكود"])
 
-st.title("🥋 أكاديمية الكاراتيه")
+st.title("🥋 سيستم الأكاديمية الاحترافي")
 
-# 2. التبويبات
-tab1, tab2 = st.tabs(["📸 تسجيل حضور", "⚙️ الإدارة"])
+tab1, tab2 = st.tabs(["📸 تسجيل حضور", "➕ إضافة لاعب"])
 
+# تبويب الإضافة: هنا بيتحول الرقم لـ QR
+with tab2:
+    name = st.text_input("اسم اللاعب:")
+    code = st.text_input("كود اللاعب:")
+    if st.button("حفظ وتوليد QR"):
+        # حفظ البيانات
+        new_row = pd.DataFrame({"الاسم": [name], "الكود": [code]})
+        st.session_state.players = pd.concat([st.session_state.players, new_row], ignore_index=True)
+        # توليد الـ QR
+        qr = qrcode.make(code)
+        qr.save("code.png")
+        st.success("تم الحفظ!")
+        st.image("code.png")
+
+# تبويب الحضور: هنا بنقرأ الـ QR اللي ولدناه
 with tab1:
-    st.subheader("سكان بالكاميرا")
-    img_file = st.camera_input("وجه الكاميرا للكود")
-    
+    img_file = st.camera_input("صور الـ QR كود")
     if img_file:
         bytes_data = img_file.getvalue()
         cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
         decoded = decode(cv2_img)
-        
         if decoded:
-            code = decoded[0].data.decode('utf-8')
-            st.success(f"✅ تم تسجيل حضور الكود: {code}")
-            st.session_state.attendance.append({"الكود": code, "الوقت": datetime.now().strftime("%H:%M")})
-        else:
-            st.warning("🔄 لم يتم التعرف على كود.. حاول مرة أخرى")
-
-with tab2:
-    st.subheader("إضافة لاعب جديد")
-    name = st.text_input("اسم اللاعب:")
-    code = st.text_input("الكود:")
-    date = st.date_input("تاريخ انتهاء الاشتراك:")
-    
-    if st.button("حفظ اللاعب"):
-        new_player = pd.DataFrame({"الاسم": [name], "الكود": [code], "انتهاء الاشتراك": [str(date)]})
-        st.session_state.players = pd.concat([st.session_state.players, new_player], ignore_index=True)
-        st.success(f"تم إضافة {name} بنجاح!")
-    
-    st.divider()
-    st.subheader("قائمة اللاعبين")
-    st.table(st.session_state.players)
+            scanned = decoded[0].data.decode('utf-8')
+            if scanned in st.session_state.players['الكود'].values:
+                st.success(f"✅ حضور اللاعب: {scanned}")
+            else:
+                st.error("❌ كود غير مسجل!")
