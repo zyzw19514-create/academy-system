@@ -117,7 +117,7 @@ elif choice == "🔐 لوحة تحكم الإدارة والتعديل":
     st.markdown("<h3 style='color: #D4AF37; text-align:right;'>صلاحيات الإدارة</h3>", unsafe_allow_html=True)
     admin_pass = st.text_input("أدخل كلمة المرور السرية لفتح الصلاحيات:", type="password")
     
-    if admin_pass == "1234":
+    if admin_pass == "Freed123@":
         st.success("🔓 تم الدخول بنجاح.")
         
         tab1, tab2, tab3 = st.tabs(["➕ إضافة لاعب جديد", "✏️ تعديل بيانات وشحن حصص", "📋 كشف المشتركين"])
