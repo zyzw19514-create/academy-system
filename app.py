@@ -3,7 +3,6 @@ import pandas as pd
 import os
 import qrcode
 from datetime import datetime
-from PIL import Image
 import cv2
 import numpy as np
 
@@ -14,7 +13,7 @@ st.title("🥋 الأكاديمية اليابانية للكاراتيه")
 PLAYERS_FILE = "players.csv"
 ATTENDANCE_FILE = "attendance.csv"
 
-# إنشاء الملفات لو مش موجودة
+# ---------------- ملفات ----------------
 if not os.path.exists(PLAYERS_FILE):
     pd.DataFrame(columns=["name", "code", "sessions"]).to_csv(PLAYERS_FILE, index=False)
 
@@ -24,14 +23,20 @@ if not os.path.exists(ATTENDANCE_FILE):
 players = pd.read_csv(PLAYERS_FILE)
 attendance = pd.read_csv(ATTENDANCE_FILE)
 
+# ---------------- قائمة ----------------
 menu = st.sidebar.selectbox(
     "القائمة",
-    ["إضافة لاعب", "تسجيل حضور", "اللاعبين", "سجل الحضور"]
+    [
+        "إضافة لاعب",
+        "تسجيل حضور",
+        "اللاعبين",
+        "سجل الحضور",
+        "الاشتراكات",
+        "تجديد الاشتراك"
+    ]
 )
 
-# =========================
-# إضافة لاعب
-# =========================
+# ================= إضافة لاعب =================
 if menu == "إضافة لاعب":
 
     st.header("إضافة لاعب")
@@ -41,8 +46,11 @@ if menu == "إضافة لاعب":
 
     if st.button("إضافة"):
 
-        if code in players["code"].astype(str).values:
-            st.error("الكود مستخدم قبل كده")
+        if name == "" or code == "":
+            st.error("املأ البيانات")
+
+        elif code in players["code"].astype(str).values:
+            st.error("الكود موجود")
 
         else:
             new_player = pd.DataFrame([{
@@ -55,18 +63,15 @@ if menu == "إضافة لاعب":
             players.to_csv(PLAYERS_FILE, index=False)
 
             qr = qrcode.make(code)
-            qr_path = f"{code}.png"
-            qr.save(qr_path)
+            qr.save(f"{code}.png")
 
             st.success("تم إضافة اللاعب")
-            st.image(qr_path, caption="QR Code")
+            st.image(f"{code}.png")
 
-# =========================
-# تسجيل حضور
-# =========================
+# ================= حضور =================
 elif menu == "تسجيل حضور":
 
-    method = st.radio("طريقة التسجيل", ["كود", "QR (صورة من الموبايل)"])
+    method = st.radio("طريقة التسجيل", ["كود", "QR (صورة)"])
 
     # كود
     if method == "كود":
@@ -80,11 +85,10 @@ elif menu == "تسجيل حضور":
 
             else:
                 idx = players.index[players["code"].astype(str) == code][0]
-
                 sessions = int(players.loc[idx, "sessions"])
 
                 if sessions <= 0:
-                    st.error("الاشتراك منتهي")
+                    st.error("❌ الاشتراك منتهي")
 
                 else:
                     players.loc[idx, "sessions"] = sessions - 1
@@ -102,13 +106,13 @@ elif menu == "تسجيل حضور":
                     attendance = pd.concat([attendance, new_att], ignore_index=True)
                     attendance.to_csv(ATTENDANCE_FILE, index=False)
 
-                    st.success(f"تم تسجيل حضور {players.loc[idx,'name']}")
-                    st.info(f"المتبقي: {sessions-1} حصص")
+                    st.success("تم تسجيل الحضور")
+                    st.info(f"المتبقي: {sessions-1}")
 
-    # QR
+    # QR صورة
     else:
 
-        file = st.file_uploader("ارفع صورة QR", type=["png", "jpg", "jpeg"])
+        file = st.file_uploader("ارفع QR", type=["png", "jpg", "jpeg"])
 
         if file:
 
@@ -118,55 +122,93 @@ elif menu == "تسجيل حضور":
             detector = cv2.QRCodeDetector()
             data, _, _ = detector.detectAndDecode(img)
 
-            if data:
+            if data in players["code"].astype(str).values:
 
-                if data in players["code"].astype(str).values:
+                idx = players.index[players["code"].astype(str) == data][0]
+                sessions = int(players.loc[idx, "sessions"])
 
-                    idx = players.index[players["code"].astype(str) == data][0]
-                    sessions = int(players.loc[idx, "sessions"])
-
-                    if sessions <= 0:
-                        st.error("الاشتراك منتهي")
-
-                    else:
-                        players.loc[idx, "sessions"] = sessions - 1
-                        players.to_csv(PLAYERS_FILE, index=False)
-
-                        now = datetime.now()
-
-                        new_att = pd.DataFrame([{
-                            "name": players.loc[idx, "name"],
-                            "code": data,
-                            "date": now.strftime("%Y-%m-%d"),
-                            "time": now.strftime("%H:%M:%S")
-                        }])
-
-                        attendance = pd.concat([attendance, new_att], ignore_index=True)
-                        attendance.to_csv(ATTENDANCE_FILE, index=False)
-
-                        st.success("تم تسجيل الحضور بالـQR")
-                        st.info(f"المتبقي: {sessions-1} حصص")
+                if sessions <= 0:
+                    st.error("❌ الاشتراك منتهي")
 
                 else:
-                    st.error("اللاعب غير موجود")
+                    players.loc[idx, "sessions"] = sessions - 1
+                    players.to_csv(PLAYERS_FILE, index=False)
+
+                    now = datetime.now()
+
+                    new_att = pd.DataFrame([{
+                        "name": players.loc[idx, "name"],
+                        "code": data,
+                        "date": now.strftime("%Y-%m-%d"),
+                        "time": now.strftime("%H:%M:%S")
+                    }])
+
+                    attendance = pd.concat([attendance, new_att], ignore_index=True)
+                    attendance.to_csv(ATTENDANCE_FILE, index=False)
+
+                    st.success("تم تسجيل الحضور")
+                    st.info(f"المتبقي: {sessions-1}")
 
             else:
-                st.error("لم يتم قراءة QR")
+                st.error("QR غير صحيح")
 
-# =========================
-# اللاعبين
-# =========================
+# ================= لاعبين =================
 elif menu == "اللاعبين":
-
-    st.header("اللاعبين")
 
     st.dataframe(players)
 
-# =========================
-# سجل الحضور
-# =========================
+# ================= سجل حضور =================
 elif menu == "سجل الحضور":
 
-    st.header("سجل الحضور")
-
     st.dataframe(attendance)
+
+# ================= اشتراكات =================
+elif menu == "الاشتراكات":
+
+    st.header("📋 الاشتراكات")
+
+    data = []
+
+    for i in range(len(players)):
+
+        s = int(players.loc[i, "sessions"])
+
+        if s <= 0:
+            status = "❌ منتهي"
+        elif s <= 2:
+            status = "⚠️ قرب يخلص"
+        else:
+            status = "✅ ساري"
+
+        data.append({
+            "الاسم": players.loc[i, "name"],
+            "الكود": players.loc[i, "code"],
+            "المتبقي": s,
+            "الحالة": status
+        })
+
+    df = pd.DataFrame(data)
+    st.dataframe(df)
+
+    if any(df["الحالة"] == "❌ منتهي"):
+        st.error("في اشتراكات منتهية")
+
+    if any(df["الحالة"] == "⚠️ قرب يخلص"):
+        st.warning("في اشتراكات قربت تخلص")
+
+# ================= تجديد =================
+elif menu == "تجديد الاشتراك":
+
+    st.header("تجديد اشتراك")
+
+    if len(players) > 0:
+
+        name = st.selectbox("اختار اللاعب", players["name"].tolist())
+
+        if st.button("تجديد 8 حصص"):
+
+            idx = players.index[players["name"] == name][0]
+            players.loc[idx, "sessions"] = 8
+            players.to_csv(PLAYERS_FILE, index=False)
+
+            st.success("تم التجديد")
