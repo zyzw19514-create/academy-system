@@ -1,6 +1,5 @@
 streamlit
-opencv-python-headless
-numpy
-pyzbar
-qrcode
 pandas
+qrcode
+pillow
+opencv-python-headless
